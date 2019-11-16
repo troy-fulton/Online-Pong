@@ -30,7 +30,7 @@ void main(void) {
      * SETUP for GPIO
      ****************************************/
 
-    // ...
+    // Added a GPIO device...
 
     /****************************************
      * SETUP for the song
