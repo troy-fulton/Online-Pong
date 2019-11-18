@@ -11,7 +11,7 @@
 
 #include <Ethernet.h>
 
-char game_over = 1;   // Similar to MSP432
+char game_over = 0;   // Similar to MSP432
 
 void setup() {
   // Set up the Web Server Interface
