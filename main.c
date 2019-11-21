@@ -21,6 +21,7 @@
 #include "music.h"
 #include "uart.h"
 
+
 char game_over = 1; // a boolean
 
 void main(void) {
