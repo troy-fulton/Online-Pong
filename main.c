@@ -3,7 +3,7 @@
 
   For the MSP432 device, all that is necessary is a potentiometer reading
   via ADC, a bit of music to play on the Piezo Buzzer, and a UART connection
-  for the Arduino device communication.
+  for the Arduino defvice communication.
 
   This simple code will read the ADC conversion generated from reading the
   potentiometer, place it in the TX buffer, and transmit it along the Serial
@@ -18,11 +18,8 @@
 */
 
 #include "msp.h"
+#include "adc.h"
 #include "music.h"
-#include "uart.h"
-
-
-char game_over = 1; // a boolean
 
 void main(void) {
     WDT_A->CTL = WDT_A_CTL_PW | WDT_A_CTL_HOLD;     // stop watchdog timer
@@ -74,21 +71,13 @@ void main(void) {
     /**********************************************************************
      * SETUP FOR eUSCI (UART)
      **********************************************************************/
-    setup_uart();   // starts polling for receiver...
+    uart_setup();   // starts polling for receiver...
     char rxbuf;
 
     /**********************************************************************
      * SETUP FOR ADC
      **********************************************************************/
-    P4->SEL1 |= BIT2;
-    P4->SEL0 |= BIT2;
-    ADC14->CTL0 = ADC14_CTL0_SHT0_2 | ADC14_CTL0_SHP | ADC14_CTL0_ON;
-    ADC14->CTL1 = ADC14_CTL1_RES_2;
-    ADC14->MCTL[0] = ADC14_MCTLN_INCH_11;
-
-    // Set up interrupts here somewhere...
-
-    unsigned int NADC;      // NADC
+    adc_setup();
 
     /****************************************
      * PROGRAM
