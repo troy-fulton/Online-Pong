@@ -252,7 +252,7 @@ void play_song() {
 
 // ISR for the Timer A CC
 void TA0_0_IRQHandler() {
-
+    __disable_irq();
     if (TIMER_A0->CCTL[0] & TIMER_A_CCTLN_CCIFG) {  // "pitch" timer
         TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIFG;  // reset it
         if (playing_song) {     // During the song, use that array
@@ -283,4 +283,5 @@ void TA0_0_IRQHandler() {
             TIMER_A0->CCR[1] += 10;
         }
     }
+    __enable_irq();
 }
