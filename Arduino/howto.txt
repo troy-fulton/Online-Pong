@@ -1,0 +1,9 @@
+How this will work:
+
+We will use the Arduino as the web SERVER:
+    1. Connect the Arduino to the Ethernet and run the web server program.
+    2. Open the Serial Comm port and grab the IP address of the server.
+    
+We will run python on CLIENTS to play the game:
+    1. Enter the IP address of the server in the python script wherever it goes.
+    2. Run the Python script to play the game.

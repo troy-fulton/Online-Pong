@@ -1,8 +1,12 @@
 import pygame
 import random
 import sys
+import requests
+import re
+import time
 
-
+# Set the IP based on the Arduino IP Address for the server
+ip_addr = "192.168.137.221"
 
 class Paddle(pygame.Rect):
     def __init__(self, velocity, up_key, down_key, *args, **kwargs):
@@ -35,6 +39,8 @@ class Ball(pygame.Rect):
 
 
 class Pong:
+    game_over = 0
+
     height = 500
     width = 1100
 
@@ -105,7 +111,9 @@ class Pong:
                     break
 
     def game_loop(self):
-        while True:
+        # Counter is just so it doesn't run forever (for testing):
+        counter = 0
+        while counter < 100:
             for event in pygame.event.get():
                 # Add some extra ways to exit the game.
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -130,6 +138,7 @@ class Pong:
 
             pygame.display.flip()
             self.clock.tick(60)
+            counter += 1
 
 def main():
     pong = Pong()
@@ -137,4 +146,23 @@ def main():
 
 
 if __name__ == '__main__':
-    main();
+    # Request the page:
+    response = requests.get("http://"+ip_addr)
+    #print(response.text)
+    
+    # Parse the data we need out of the response with regex (don't need to worry about this stuff)
+    # Eventually, we will need to parse out which player we are when we get to two-player
+    game_over_pattern = re.compile("game_over ([0,1])")
+    game_over_match = int(game_over_pattern.findall(response.text)[0])
+    
+    msp432_paddle_pattern = re.compile("msp432_paddle ([0-9]*\.[0-9]*)")
+    msp432_paddle_match = float(msp432_paddle_pattern.findall(response.text)[0])
+    
+    other_paddle_pattern = re.compile("other_paddle ([0-9]*\.[0-9]*)")
+    other_paddle_match = float(other_paddle_pattern.findall(response.text)[0])
+    
+    # Echo it to the output
+    print("game_over", game_over_match)
+    print("msp432_paddle", msp432_paddle_match)
+    print("other_paddle", other_paddle_match)
+    main()
