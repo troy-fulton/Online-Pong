@@ -4,8 +4,9 @@
  *
  *********************************************************************************************/
 
-char game_over = 1; // a boolean
-
+char game_over = 0; // a boolean
+char arduino_received = 1;  // for synchronization
+volatile unsigned int adc_raw;
 
 // Receive a character through the serial communication line
 char uart_receive() {      // Now includes a wait time to limit polling
@@ -29,13 +30,15 @@ void uart_setup() {
     EUSCI_A0->MCTLW = (9 << EUSCI_A_MCTLW_BRF_OFS) | EUSCI_A_MCTLW_OS16;
     EUSCI_A0->CTLW0 &= ~EUSCI_A_CTLW0_SWRST;
 
-    //enalbe UART RX interrupt
-    EUSCI_A2->IE |= EUSCI_A_IE_RXIE;
+    // Enable UART pins:
+    P1->SEL0 |= BIT2 | BIT3;
+
+    //enable UART RX interrupt
+    EUSCI_A0->IE |= EUSCI_A_IE_RXIE;
     NVIC->ISER[0] = 1 << ((EUSCIA0_IRQn) & 31);
     __delay_cycles(1000);
 
    __enable_irq();
-
 }
 
 void EUSCIA0_IRQHandler(void){ //once this is done delete uart_recieve
@@ -46,6 +49,8 @@ void EUSCIA0_IRQHandler(void){ //once this is done delete uart_recieve
 
         //clear flag
         EUSCI_A0->IFG &= ~EUSCI_A_IFG_RXIFG;
+
+        arduino_received = 1;
 
         //read from the buffer
          char temp = EUSCI_A0->RXBUF;

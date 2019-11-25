@@ -20,7 +20,7 @@ float msp432_paddle, other_paddle;
 unsigned int msp432_potent = 0;
 
 // Signals that the game is over/ not over:
-byte game_start_signal = 0xAA;
+byte game_on_signal = 0xAA;
 byte game_over_signal  = 0xFF;
 
 byte mac[] = { 
@@ -31,7 +31,7 @@ IPAddress ip(1,2,3,4);
 EthernetServer server(80);
 
 // Initialize Serial (UART) communication with MSP432
-SoftwareSerial msp432Serial(10, 11); // RX, TX
+SoftwareSerial msp432Comm(8, 9); // RX, TX
 
 void setup() {
   Ethernet.init(10);  // Most Arduino shields init this way
@@ -59,27 +59,29 @@ void setup() {
   Serial.println(Ethernet.localIP());
 
   // Open the communication channel with the MSP432 Device:
-  msp432Serial.begin(9600);   // 9600 baud rate
-  msp432Serial.write(game_start_signal);
+  msp432Comm.begin(9600);   // 9600 baud rate
+  msp432Comm.write(game_on_signal);
 }
 
 
 void loop() {
   // listen for incoming clients but also for serial communication
   EthernetClient client = server.available();
-  int receiver_available = msp432Serial.available();
+  int receiver_available = msp432Comm.available();
 
-  /*if (receiver_available) {
-    byte first_reading = msp432Serial.read();
-    if (msp432Serial.available()) {
-      byte second_reading = msp432Serial.read();
-      msp432_potent = first_reading | (second_reading << 8);
-      // Give the paddle's position as a "percentage"
-      msp432_paddle = ((float) msp432_potent / 4096.0) * 100.0; 
-    } else {
-      Serial.println("Only got one read() from serial MSP432 communication.");
-    }
-  }*/
+  if (receiver_available) {
+    byte first_reading = msp432Comm.read();
+    // Wait until the next character is sent
+    while (!msp432Comm.available()) ;
+    byte second_reading = msp432Comm.read();
+    msp432_potent = first_reading | (second_reading << 8);
+    // Give the paddle's position as a "percentage"
+    msp432_paddle = ((float) msp432_potent / 4096.0) * 100.0; 
+    Serial.print("Paddle position from MSP432: ");
+    Serial.print(msp432_potent);
+    Serial.println();
+    msp432Comm.write(game_on_signal);
+  }
   if (client) {
     Serial.println("new client");
     // an http request ends with a blank line

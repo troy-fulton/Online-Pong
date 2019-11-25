@@ -18,7 +18,6 @@
 */
 
 #include "msp.h"
-#include "adc.h"
 #include "music.h"
 
 void main(void) {
@@ -29,6 +28,9 @@ void main(void) {
      ****************************************/
 
     // Added a GPIO device...
+    // P5.0 is OUTPUT
+    P5->DIR |= BIT0;
+    P5->OUT &= ~BIT0;
 
     /****************************************
      * SETUP for the song
@@ -79,6 +81,9 @@ void main(void) {
      **********************************************************************/
     adc_setup();
 
+    // Start the first conversion
+    ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
+
     /****************************************
      * PROGRAM
      ****************************************/
@@ -107,7 +112,7 @@ void main(void) {
          * Piezo buzzer and (possibly) the transmission of data via UART.
          */
 
-        if (!game_over) {
+        if (game_over == 0) {
             play_song();
         }
 
