@@ -31,7 +31,9 @@ void adc_setup() {
 
 // Interrupt handler for receiving a signal from UART channel
 void ADC14_IRQHandler(void) {
-    //adc_raw = ADC14->MEM[0];
-    adc_raw = 0xABCD;
+    __disable_irq();
+    adc_raw = ADC14->MEM[0];
+    ADC14->CLRIFGR0 |= ADC14_CLRIFGR0_CLRIFG0; // Clear interrupt flag 1
+    __enable_irq();
 }
 
