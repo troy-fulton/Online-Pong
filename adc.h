@@ -9,7 +9,6 @@
 // TODO: Something in here is not right... need to use potentiometer from BH EDU board with
 // correct voltage reference
 
-volatile unsigned int adc_raw;
 
 void adc_setup() {
     P4->SEL1 |= BIT2;
@@ -32,17 +31,7 @@ void adc_setup() {
 
 // Interrupt handler for receiving a signal from UART channel
 void ADC14_IRQHandler(void) {
-    __disable_irq();
-    // Collect input and immediately start converting again
-    adc_raw = ADC14->MEM[0];
-
-    // Handle sending UART info
-    uart_send(adc_raw & 0xFF);  // lower 8 bits first
-    uart_send(adc_raw >> 8);    // higher 4 bits next
-
-    // Restart the conversion if the game isn't over
-    if (game_over == 0)
-        ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
-    __enable_irq();
+    //adc_raw = ADC14->MEM[0];
+    adc_raw = 0xABCD;
 }
 

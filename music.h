@@ -3,6 +3,7 @@
  * MACROS / FUNCTIONS / GLOBAL VARIABLES FOR ADDED MUSIC FEATURES
  *
  *********************************************************************************************/
+#include "adc.h"
 
 // Timer functions to start/stop the continuous counting by enabling/
 // disabling interrupts
@@ -10,8 +11,7 @@ void start_timer() {
     // Enable timer interrupts
     TIMER_A0->CCTL[0] |= TIMER_A_CCTLN_CCIE;    // Enable CC interrupts - pitch
     TIMER_A0->CCTL[1] |= TIMER_A_CCTLN_CCIE;    // Enable CC interrupts - tempo
-    NVIC->ISER[0] |= 1 << ((TA0_0_IRQn) & 31);  // "0" means any of the capture/compare registers (why?)
-    __enable_irq();     // enable interrupts
+    NVIC->ISER[0] |= 1 << ((TA0_0_IRQn) & 31);  // "0" means any of the capture/compare registers
 }
 
 void stop_timer() {
@@ -19,7 +19,6 @@ void stop_timer() {
     TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIE;       // Disable CC interrupts - pitch
     TIMER_A0->CCTL[1] &= ~TIMER_A_CCTLN_CCIE;       // Disable CC interrupts - tempo
     NVIC->ISER[0] &= ~(1 << ((TA0_0_IRQn) & 31));  // "0" means any of the capture/compare registers (why?)
-    __disable_irq();    // disable interrupts
 
 }
 
@@ -279,6 +278,17 @@ void TA0_0_IRQHandler() {
             if (counter*10 == song[curr_note].len) {
                 curr_note++;    // Toggle note index in song array when done
                 counter = 0;
+
+                // At the end of each note, restart ADC conversion and send the
+                // data to the Arduino
+                if (arduino_received) {
+                    uart_send(adc_raw & 0xFF);  // lower 8 bits first
+                    uart_send(adc_raw >> 8);    // higher 4 bits next
+                    if (game_over == 0) {
+                        ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
+                    }
+                    arduino_received = 0;
+                }
             }
             TIMER_A0->CCR[1] += 10;
         }

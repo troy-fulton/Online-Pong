@@ -41,7 +41,9 @@ class Ball(pygame.Rect):
         self.y += self.angle
 
 
-class Pong():
+class Pong:
+    game_over = 0
+
     height = 500
     width = 1100
 
@@ -122,7 +124,7 @@ class Pong():
                     break
 
     def game_loop(self):
-
+        
         counter = 0
 
         msp432_paddle_percentage = 0
@@ -134,8 +136,7 @@ class Pong():
             if(counter == 200):
                 counter = 0
                 msp432_paddle_percentage,other_paddle_percentage = request_state()
-                
-                
+
             for event in pygame.event.get():
                 # Add some extra ways to exit the game.
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -164,27 +165,8 @@ class Pong():
             pygame.draw.rect(self.screen, self.color, self.central_line)
 
             pygame.display.flip()
-            self.clock.tick(60) #60 fps
-
-    def request_state():
-             # Request the page:
-        response = requests.get("http://"+ip_addr)
-        #print(response.text)
-        
-        # Parse the data we need out of the response with regex (don't need to worry about this stuff)
-        # Eventually, we will need to parse out which player we are when we get to two-player
-   
-        game_over_match = int(game_over_pattern.findall(response.text)[0])
-        
-        self.game_over = game_over_match 
-        
-        msp432_paddle_match = float(msp432_paddle_pattern.findall(response.text)[0])        
-       
-        other_paddle_match = float(other_paddle_pattern.findall(response.text)[0])
-
-        return msp432_paddle_match, other_paddle_match
-
-        
+            self.clock.tick(60)
+           
 
 def main():
     pong = Pong()
