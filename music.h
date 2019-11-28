@@ -3,7 +3,7 @@
  * MACROS / FUNCTIONS / GLOBAL VARIABLES FOR ADDED MUSIC FEATURES
  *
  *********************************************************************************************/
-#include "adc.h"
+#include "adc.h"    // To start the ADC Conversion and do a send over UART
 
 // Timer functions to start/stop the continuous counting by enabling/
 // disabling interrupts
@@ -11,6 +11,7 @@ void start_timer() {
     // Enable timer interrupts
     TIMER_A0->CCTL[0] |= TIMER_A_CCTLN_CCIE;    // Enable CC interrupts - pitch
     TIMER_A0->CCTL[1] |= TIMER_A_CCTLN_CCIE;    // Enable CC interrupts - tempo
+    TIMER_A0->CCTL[2] |= TIMER_A_CCTLN_CCIE;    // Enable CC interrupts - adc
     NVIC->ISER[0] |= 1 << ((TA0_0_IRQn) & 31);  // "0" means any of the capture/compare registers
 }
 
@@ -18,6 +19,7 @@ void stop_timer() {
     // Disable timer interrupts
     TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIE;       // Disable CC interrupts - pitch
     TIMER_A0->CCTL[1] &= ~TIMER_A_CCTLN_CCIE;       // Disable CC interrupts - tempo
+    TIMER_A0->CCTL[2] &= ~TIMER_A_CCTLN_CCIE;       // Disable CC interrupts - adc
     NVIC->ISER[0] &= ~(1 << ((TA0_0_IRQn) & 31));  // "0" means any of the capture/compare registers (why?)
 
 }
@@ -92,6 +94,10 @@ float frequencies[25] = {
 // timer can only go so high
 int counter = 0;
 
+// Have to use a different counter/threshold for the ADC sampler
+int adc_counter = 0;
+int adc_thresh = 20;
+
 struct NOTE {
     int name;   // index into below table
     int period; // as something we can give to the timer (have to initialize)
@@ -100,7 +106,7 @@ struct NOTE {
 
 // Allocate our song here while keeping track of how many notes we have
 
-#define PLAYING_BACH 0
+#define PLAYING_BACH 1
 
 #if PLAYING_BACH
 #define NOTE_COUNT 30
@@ -218,14 +224,8 @@ struct NOTE song[NOTE_COUNT] = {
 
 #endif  // which song to play (PLAYING_BACH)
 
-// boolean for if the side button has been pressed to play the song
-int playing_song = 0;
-
 // For when we are playing the song:
 int curr_note = 0;
-
-// For when we are taking input notes from the keypad:
-int custom_pitch = 0;
 
 // Calculate how long a sleep should be for a given note using this
 // magic number
@@ -233,64 +233,57 @@ int find_period(int note_name) {
     return (int) (1/frequencies[note_name] * SLEEP_MULTIPLE);
 }
 
-// When we receive keypad input for a note to play
-void play_note(int note_name) {
-    custom_pitch = find_period(note_name);
-}
-
 // When we get the special button to play our song
 void play_song() {
-    playing_song = 1;
     curr_note = 0;
     start_timer();
     while (curr_note < NOTE_COUNT) ;    // spin until song is over
     stop_timer();
-    playing_song = 0;
     P5->OUT |= BIT0;                    // turn off buzzer just in case
 }
 
 // ISR for the Timer A CC
 void TA0_0_IRQHandler() {
     __disable_irq();
+
     if (TIMER_A0->CCTL[0] & TIMER_A_CCTLN_CCIFG) {  // "pitch" timer
         TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIFG;  // reset it
-        if (playing_song) {     // During the song, use that array
-            TIMER_A0->CCR[0] += song[curr_note].period;
 
-            // This condition says "only play 90% of the note" so we can hear articulation
-            if (counter*10 >= (song[curr_note].len - 10)) {
-                P5->OUT |= BIT0;
-            }
-            else {
-                P5->OUT ^= BIT0;
-            }
+        TIMER_A0->CCR[0] += song[curr_note].period;
+
+        // This condition says "only play 90% of the note" so we can hear articulation
+        if (counter*10 >= (song[curr_note].len - 10)) {
+            P5->OUT |= BIT0;
         }
         else {
-            TIMER_A0->CCR[0] += custom_pitch;  // play our custom pitch
-            P5->OUT ^= BIT0;    // Toggle note like PWM
+            P5->OUT ^= BIT0;
         }
     }
-
     if (TIMER_A0->CCTL[1] & TIMER_A_CCTLN_CCIFG) { // "tempo" timer
-        TIMER_A0->CCTL[1] &= ~TIMER_A_CCTLN_CCIFG;
-        if (playing_song) {         // Only care about note length here
-            counter++;              // Count multiples of 10
-            if (counter*10 == song[curr_note].len) {
-                curr_note++;    // Toggle note index in song array when done
-                counter = 0;
+        TIMER_A0->CCTL[1] &= ~TIMER_A_CCTLN_CCIFG; // reset it
 
-                // At the end of each note, restart ADC conversion and send the
-                // data to the Arduino
-                if (arduino_received) {
-                    uart_send(adc_raw & 0xFF);  // lower 8 bits first
-                    uart_send(adc_raw >> 8);    // higher 4 bits next
-                    if (game_over == 0) {
-                        ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
-                    }
-                    arduino_received = 0;
-                }
+        // Count multiples of 10
+        TIMER_A0->CCR[1] += 10;
+        counter++;
+        if (counter*10 == song[curr_note].len) {
+            curr_note++;    // Toggle note index in song array when done
+            counter = 0;
+        }
+    }
+    if (TIMER_A0->CCTL[2] & TIMER_A_CCTLN_CCIFG) { // ADC transmission timer
+        TIMER_A0->CCTL[2] &= ~TIMER_A_CCTLN_CCIFG; // reset it
+
+        adc_counter++;
+        if (adc_counter == adc_thresh) {
+            // At the end of the counter for the ADC, send the next reading
+            if (arduino_received == 2) {
+                msp432_sent = 0;
+                arduino_received = 0;
+                uart_send(adc_raw);
+                // Then start the next reading as long as the game is not over
+                ADC14->CTL0 |= ADC14_CTL0_ENC | ADC14_CTL0_SC;
             }
-            TIMER_A0->CCR[1] += 10;
+            adc_counter = 0;
         }
     }
     __enable_irq();

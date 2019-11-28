@@ -70,6 +70,9 @@ void main(void) {
     // This timer is used as the tempo (different intervals than pitch):
     TIMER_A0->CCR[1] = 10;                      // value to count up to (capture/compare register 0)
 
+    // This timer is used for the ADC conversion (ADC conversion happens this often):
+    TIMER_A0->CCR[2] = 1;
+
     /**********************************************************************
      * SETUP FOR eUSCI (UART)
      **********************************************************************/
@@ -109,9 +112,7 @@ void main(void) {
          * Piezo buzzer and (possibly) the transmission of data via UART.
          */
 
-        if (game_over == 0) {
-            play_song();
-        }
+        play_song();
 
     }
 }

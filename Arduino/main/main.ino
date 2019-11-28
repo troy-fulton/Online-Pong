@@ -12,7 +12,7 @@
 #include <SoftwareSerial.h>
 
 // Similar to MSP432:
-byte game_over = 1;
+byte game_over = 0;
 // Other game state information here:
 float msp432_paddle, other_paddle;
 
@@ -72,14 +72,15 @@ void loop() {
   if (receiver_available) {
     byte first_reading = msp432Comm.read();
     // Wait until the next character is sent
+    msp432Comm.write(game_on_signal);
     while (!msp432Comm.available()) ;
     byte second_reading = msp432Comm.read();
     msp432_potent = first_reading | (second_reading << 8);
     // Give the paddle's position as a "percentage"
-    msp432_paddle = ((float) msp432_potent / 4096.0) * 100.0; 
-    Serial.print("Paddle position from MSP432: ");
-    Serial.print(msp432_potent);
-    Serial.println();
+    //Serial.println(msp432_potent);
+    if (msp432_potent <= 4096) {
+      msp432_paddle = ((float) msp432_potent / 4096.0) * 100.0;
+    }
     msp432Comm.write(game_on_signal);
   }
   if (client) {
@@ -90,7 +91,7 @@ void loop() {
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
-        Serial.write(c);
+        //Serial.write(c);
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply

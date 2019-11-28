@@ -6,7 +6,7 @@ import re
 import time
 
 # Set the IP based on the Arduino IP Address for the server
-ip_addr = "192.168.137.221"
+ip_addr = "192.168.137.212"
 
 class Paddle(pygame.Rect):
     def __init__(self, velocity, up_key, down_key, *args, **kwargs):
@@ -17,7 +17,7 @@ class Paddle(pygame.Rect):
 
     def move_paddle(self, board_height, board_percentage):
 
-        self.y = board_percentage * (board_height - self.height)
+        self.y = int(board_percentage * (board_height - self.height))
 ##        
 ##        keys_pressed = pygame.key.get_pressed()        
 ##
@@ -45,16 +45,16 @@ class Pong:
     game_over = 0
 
     height = 500
-    width = 1100
+    width = 1200
 
     paddle_width = 10
     paddle_height = 100
 
     ball_width = 10
-    ball_velocity = 10
+    ball_velocity = 30
     ball_angle = 0
 
-    color = (255, 255, 255)  
+    color = (255, 0, 0)  
 
     def __init__(self):
         pygame.init()  # Start the pygame instance.
@@ -125,17 +125,15 @@ class Pong:
 
     def game_loop(self):
         
-        counter = 0
+        my_counter = 0
 
         msp432_paddle_percentage = 0
 
-        other_paddle_percentage = 0 
+        other_paddle_percentage = 0
         
-        while True:
-            counter += 1
-            if(counter == 200):
-                counter = 0
-                msp432_paddle_percentage,other_paddle_percentage = request_state()
+        while my_counter < 200:
+            my_counter += 1
+            msp432_paddle_percentage,other_paddle_percentage = self.request_state()
 
             for event in pygame.event.get():
                 # Add some extra ways to exit the game.
@@ -153,6 +151,7 @@ class Pong:
 
             msp_paddle.move_paddle(self.height, msp432_paddle_percentage)
             other_paddle.move_paddle(self.height, other_paddle_percentage)
+            other_paddle.height = self.height
             pygame.draw.rect(self.screen, self.color, msp_paddle)
             pygame.draw.rect(self.screen, self.color, other_paddle)
                 
@@ -166,6 +165,24 @@ class Pong:
 
             pygame.display.flip()
             self.clock.tick(60)
+
+    def request_state(self):
+        # Request the page:
+        response = requests.get("http://"+ip_addr)
+        #print(response.text)
+        
+        # Parse the data we need out of the response with regex (don't need to worry about this stuff)
+        # Eventually, we will need to parse out which player we are when we get to two-player
+   
+        game_over_match = int(self.game_over_pattern.findall(response.text)[0])
+        
+        self.game_over = game_over_match 
+        
+        msp432_paddle_match = float(self.msp432_paddle_pattern.findall(response.text)[0])
+       
+        other_paddle_match = float(self.other_paddle_pattern.findall(response.text)[0])
+
+        return msp432_paddle_match/100, other_paddle_match/100
            
 
 def main():
