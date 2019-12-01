@@ -110,7 +110,14 @@ class Pong:
     def check_ball_hits_wall(self):
         for ball in self.balls:
             if ball.x > self.width or ball.x < 0:
-                main()
+                i = 0
+                while(i < 10000):
+                    i += 1
+                    for event in pygame.event.get(): #press 1 to restart or 2 to quit 
+                        if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+                            main()
+                        if event.type == pygame.KEYDOWN and event.key == pygame.K_2:
+                            pygame.quit()
 
             if ball.y > self.height - self.ball_width or ball.y < 0:
                 ball.angle = -ball.angle
