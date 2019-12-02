@@ -6,6 +6,7 @@
 
 volatile unsigned int adc_raw;
 volatile unsigned int send_buf = 5000;
+char game_over = 1;
 
 // Synchronization variables:
 volatile char msp432_sent = 0;
@@ -21,6 +22,7 @@ char uart_receive() {      // Now includes a wait time to limit polling
 // Send a character to the serial communication line from send_buf
 void uart_send(unsigned int reading) {
     send_buf = reading;     // capture the reading
+    //printf("sending %d\n", send_buf);
     EUSCI_A0->IFG &= ~EUSCI_A_IFG_TXIFG;
     EUSCI_A0->TXBUF = send_buf & 0xFF;  // first 8 bits first
     // No longer blocking:
@@ -53,19 +55,22 @@ void EUSCIA0_IRQHandler(void){ //once this is done delete uart_recieve
     if((EUSCI_A0->IFG & EUSCI_A_IFG_RXIFG) != 0){
         //clear flag
         EUSCI_A0->IFG &= ~EUSCI_A_IFG_RXIFG;
-        arduino_received++;
 
+        //read from the buffer
+        char temp = EUSCI_A0->RXBUF;
+        // Message says game state
+        if (temp == 0xAA){
+            game_over = 0;
+        }
+        else {
+            game_over = 1;
+        }
+
+        arduino_received++;
         // Acknowledgment for half of a message
         if (arduino_received == 1) {
             // Send the other half
             uart_send(send_buf >> 8);
-        }
-
-        //read from the buffer
-        char temp = EUSCI_A0->RXBUF;
-        // Arbitrary message
-        if (temp == 0xAA){
-            ;
         }
     }
     if((EUSCI_A0->IFG & EUSCI_A_IFG_TXIFG) != 0){

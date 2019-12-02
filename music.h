@@ -106,7 +106,7 @@ struct NOTE {
 
 // Allocate our song here while keeping track of how many notes we have
 
-#define PLAYING_BACH 1
+#define PLAYING_BACH 0
 
 #if PLAYING_BACH
 #define NOTE_COUNT 30
@@ -237,7 +237,7 @@ int find_period(int note_name) {
 void play_song() {
     curr_note = 0;
     start_timer();
-    while (curr_note < NOTE_COUNT) ;    // spin until song is over
+    while (curr_note < NOTE_COUNT) ;    // spin until song is over or the game is over
     stop_timer();
     P5->OUT |= BIT0;                    // turn off buzzer just in case
 }
@@ -249,25 +249,32 @@ void TA0_0_IRQHandler() {
     if (TIMER_A0->CCTL[0] & TIMER_A_CCTLN_CCIFG) {  // "pitch" timer
         TIMER_A0->CCTL[0] &= ~TIMER_A_CCTLN_CCIFG;  // reset it
 
-        TIMER_A0->CCR[0] += song[curr_note].period;
+        if (game_over == 0) {
+            TIMER_A0->CCR[0] += song[curr_note].period;
 
-        // This condition says "only play 90% of the note" so we can hear articulation
-        if (counter*10 >= (song[curr_note].len - 10)) {
-            P5->OUT |= BIT0;
+            // This condition says "only play 90% of the note" so we can hear articulation
+            if (counter*10 >= (song[curr_note].len - 10)) {
+                P5->OUT |= BIT0;
+            }
+            else {
+                P5->OUT ^= BIT0;
+            }
         }
         else {
-            P5->OUT ^= BIT0;
+            P5->OUT = 0;
         }
     }
     if (TIMER_A0->CCTL[1] & TIMER_A_CCTLN_CCIFG) { // "tempo" timer
         TIMER_A0->CCTL[1] &= ~TIMER_A_CCTLN_CCIFG; // reset it
 
-        // Count multiples of 10
-        TIMER_A0->CCR[1] += 10;
-        counter++;
-        if (counter*10 == song[curr_note].len) {
-            curr_note++;    // Toggle note index in song array when done
-            counter = 0;
+        if (game_over == 0) {
+            // Count multiples of 10
+            TIMER_A0->CCR[1] += 10;
+            counter++;
+            if (counter*10 == song[curr_note].len) {
+                curr_note++;    // Toggle note index in song array when done
+                counter = 0;
+            }
         }
     }
     if (TIMER_A0->CCTL[2] & TIMER_A_CCTLN_CCIFG) { // ADC transmission timer
