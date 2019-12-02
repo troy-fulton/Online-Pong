@@ -23,7 +23,7 @@ void adc_setup() {
 void ADC14_IRQHandler(void) {
     __disable_irq();
     adc_raw = ADC14->MEM[0];
-    //printf("adc_raw: %i\n", adc_raw);
+    printf("adc_raw: %i\n", adc_raw);
     ADC14->CLRIFGR0 |= ADC14_CLRIFGR0_CLRIFG0; // Clear interrupt flag 1
     __enable_irq();
 }
